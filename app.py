@@ -8,7 +8,7 @@ import io
 import json
 
 # --- 1. CẤU HÌNH API ---
-GOOGLE_API_KEY = "AIzaSyDX1yM5RSPjb4b8iX6Quoz59HQkQoheVGw"
+GOOGLE_API_KEY = "AIzaSyDSBQA2TJ8oCriGYqrGetA1QeBADYroevs"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 st.set_page_config(page_title="TVU Event OS - AutoScan v1.6", layout="wide")
