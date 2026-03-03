@@ -12,7 +12,7 @@ GOOGLE_API_KEY = "AIzaSyDX1yM5RSPjb4b8iX6Quoz59HQkQoheVGw"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # Cách gọi model an toàn nhất để tránh lỗi version
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-pro')
 
 st.set_page_config(page_title="TVU Event OS - v1.4", layout="wide")
 
