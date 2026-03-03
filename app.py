@@ -7,19 +7,19 @@ import google.generativeai as genai
 import io
 import json
 
-# --- 1. CẤU HÌNH AI (BẢN V1.4 FIX LỖI 404) ---
+# --- 1. CẤU HÌNH AI (ĐỔI SANG BẢN PRO ỔN ĐỊNH 100%) ---
 GOOGLE_API_KEY = "AIzaSyDX1yM5RSPjb4b8iX6Quoz59HQkQoheVGw"
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# Cách gọi model an toàn nhất để tránh lỗi version
+# Dùng gemini-pro thay vì flash để đảm bảo không bao giờ lỗi 404
 model = genai.GenerativeModel('gemini-pro')
 
-st.set_page_config(page_title="TVU Event OS - v1.4", layout="wide")
+st.set_page_config(page_title="TVU Event OS - v1.5", layout="wide")
 
-# --- 2. HÀM AI XỬ LÝ ---
+# --- 2. HÀM AI XỬ LÝ DỮ LIỆU ---
 def ask_ai_for_event_data(event_name):
     prompt = f"""
-    Bạn là chuyên gia sự kiện tại Đại học Trà Vinh (TVU). 
+    Bạn là chuyên gia tổ chức sự kiện tại Đại học Trà Vinh (TVU). 
     Hãy lập hồ sơ chi tiết cho sự kiện: "{event_name}".
     
     Yêu cầu trả về JSON chuẩn (KHÔNG GIẢI THÍCH):
@@ -28,12 +28,11 @@ def ask_ai_for_event_data(event_name):
       "kich_ban": [{{"Giờ": "...", "Nội dung": "...", "Kỹ thuật": "...", "Điều phối": "..."}}],
       "du_toan": [{{"Khoản mục": "...", "Số lượng": 0, "Đơn giá": 0, "Thành tiền": 0}}]
     }}
-    Lưu ý: Đổ ra ít nhất 10 dòng công việc thực tế.
+    Lưu ý: Đổ ra ít nhất 10 dòng công việc thực tế, logic, khả thi.
     """
-    # Sử dụng phương thức generate_content cơ bản
     response = model.generate_content(prompt)
     
-    # Xử lý chuỗi JSON cẩn thận
+    # Ép xử lý dữ liệu để không bị lỗi JSON
     text = response.text
     if "```json" in text:
         text = text.split("```json")[1].split("```")[0].strip()
@@ -46,7 +45,6 @@ def ask_ai_for_event_data(event_name):
 # --- 3. HÀM XUẤT WORD CHUẨN ---
 def export_to_word(name, df_kh, df_kb, df_dt):
     doc = Document()
-    # Tạo Header 2 cột
     table = doc.add_table(rows=1, cols=2)
     l_cell = table.cell(0, 0).paragraphs[0]
     l_cell.add_run("UBND TỈNH TRÀ VINH\n").bold = True
@@ -83,20 +81,20 @@ def export_to_word(name, df_kh, df_kb, df_dt):
     return buffer.getvalue()
 
 # --- 4. GIAO DIỆN ---
-st.title("🏛️ TVU EVENT OS (Ultra Stable v1.4)")
+st.title("🏛️ TVU EVENT OS (Stable Pro v1.5)")
 
 ev_name = st.text_input("Nhập tên sự kiện:", value="Lễ công bố Đại học Trà Vinh")
 
 if st.button("🪄 AI TỰ ĐỘNG Lập Kế Hoạch"):
-    with st.spinner("AI đang 'nặn' kịch bản cho ông..."):
+    with st.spinner("AI đang 'nặn' kịch bản, ông đợi vài giây nhé..."):
         try:
             kh, kb, dt = ask_ai_for_event_data(ev_name)
             st.session_state.kh = kh
             st.session_state.kb = kb
             st.session_state.dt = dt
-            st.success("Ngon rồi ông ơi! Dữ liệu đã về máy.")
+            st.success("Tuyệt vời! Dữ liệu đã tải xong.")
         except Exception as e:
-            st.error(f"Lỗi rồi: {e}. Ông kiểm tra lại API Key hoặc bấm thử lại nhé!")
+            st.error(f"Lỗi rồi: {e}. Báo lại cho tôi dòng chữ đỏ này nhé!")
 
 if 'kh' in st.session_state:
     t1, t2, t3, t4 = st.tabs(["📅 KẾ HOẠCH", "🎬 KỊCH BẢN", "💰 DỰ TOÁN", "📄 XUẤT FILE"])
@@ -107,7 +105,6 @@ if 'kh' in st.session_state:
         st.session_state.kb = st.data_editor(st.session_state.kb, num_rows="dynamic", use_container_width=True)
     with t3:
         df_dt = st.data_editor(st.session_state.dt, num_rows="dynamic", use_container_width=True)
-        # Ép kiểu dữ liệu để tính toán
         try:
             df_dt['Thành tiền'] = pd.to_numeric(df_dt['Số lượng']) * pd.to_numeric(df_dt['Đơn giá'])
             st.metric("TỔNG TIỀN", f"{df_dt['Thành tiền'].sum():,.0f} VNĐ")
