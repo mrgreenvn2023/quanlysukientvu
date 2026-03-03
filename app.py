@@ -8,7 +8,7 @@ import io
 import json
 
 # --- 1. CẤU HÌNH AI (ĐÃ FIX LỖI MODEL) ---
-GOOGLE_API_KEY = "AIzaSyCkYx-gXZxLpNssiO1VgOmCJZZ00biUdvc"
+GOOGLE_API_KEY = "AIzaSyDX1yM5RSPjb4b8iX6Quoz59HQkQoheVGw"
 genai.configure(api_key=GOOGLE_API_KEY)
 # Sử dụng 'gemini-1.5-flash-latest' để đảm bảo luôn cập nhật phiên bản mới nhất
 model = genai.GenerativeModel('gemini-1.5-flash-latest')
