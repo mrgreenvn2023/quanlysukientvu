@@ -3,54 +3,54 @@ import pandas as pd
 from docx import Document
 from docx.shared import Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-import google.generativeai as genai
 import io
-import json
 
-# --- 1. CẤU HÌNH API ---
-GOOGLE_API_KEY = "AIzaSyD-G8UbYJhnvhCNQsypU0aH1Z1Dhypi0cQ"
-genai.configure(api_key=GOOGLE_API_KEY)
+st.set_page_config(page_title="TVU Event OS - Template Engine", layout="wide")
 
-st.set_page_config(page_title="TVU Event OS - AutoScan v1.6", layout="wide")
+# --- 1. KHO DỮ LIỆU MẪU CỦA ĐẠI HỌC TRÀ VINH ---
+# Hệ thống không cần AI mạng, tự rút dữ liệu từ kho nội bộ
+TVU_TEMPLATES = {
+    "Lễ công bố / Kỷ niệm lớn": {
+        "kh": [
+            {"Hạng mục": "Soạn thảo văn bản", "Nội dung": "Lập tờ trình, xin ý kiến BGH, mời đại biểu", "Phụ trách": "Văn phòng", "Hạn": "Ngày -15"},
+            {"Hạng mục": "Thiết kế nhận diện", "Nội dung": "Thiết kế Backdrop, Standee, Thẻ đeo", "Phụ trách": "Tổ Truyền thông", "Hạn": "Ngày -10"},
+            {"Hạng mục": "Sản xuất quà tặng", "Nội dung": "In ấn túi tote canvas in logo TVU, chuẩn bị quà VIP", "Phụ trách": "Văn phòng", "Hạn": "Ngày -7"},
+            {"Hạng mục": "Thi công sân khấu", "Nội dung": "Dựng khung backdrop, test màn hình LED, âm thanh", "Phụ trách": "Phòng QT-TB", "Hạn": "Ngày -2"},
+            {"Hạng mục": "Tổng duyệt kịch bản", "Nội dung": "Chạy thử MC, test nhạc lễ, khớp đội hình lễ tân", "Phụ trách": "Đạo diễn / MC", "Hạn": "Ngày -1"}
+        ],
+        "kb": [
+            {"Giờ": "07:30 - 08:00", "Nội dung": "Đón khách, cài hoa đại biểu, mời dùng Teabreak", "Kỹ thuật": "Nhạc hòa tấu nhẹ nhàng", "Điều phối": "Lễ tân"},
+            {"Giờ": "08:00 - 08:10", "Nội dung": "Ổn định tổ chức, văn nghệ chào mừng (2 tiết mục)", "Kỹ thuật": "Nhạc nền sôi động, Ánh sáng full", "Điều phối": "Đoàn Thanh niên"},
+            {"Giờ": "08:10 - 08:15", "Nội dung": "Chào cờ, Tuyên bố lý do, Giới thiệu đại biểu", "Kỹ thuật": "Nhạc Quốc ca chuẩn", "Điều phối": "MC"},
+            {"Giờ": "08:15 - 08:30", "Nội dung": "Phát biểu khai mạc của Lãnh đạo Trường", "Kỹ thuật": "Micro bục, Slide nền TVU", "Điều phối": "BGH"},
+            {"Giờ": "08:30 - 08:45", "Nội dung": "Nghi thức công bố quyết định quan trọng", "Kỹ thuật": "Nhạc hành khúc dồn dập, Pháo hoa điện", "Điều phối": "MC / Kỹ thuật"},
+            {"Giờ": "08:45 - 09:00", "Nội dung": "Tặng hoa, trao quà lưu niệm (Túi tote TVU)", "Kỹ thuật": "Nhạc trao thưởng", "Điều phối": "Lễ tân"}
+        ],
+        "dt": [
+            {"Khoản mục": "Sản xuất túi Tote TVU (Quà tặng)", "Số lượng": 500, "Đơn giá": 35000, "Thành tiền": 17500000},
+            {"Khoản mục": "Teabreak đón khách VIP", "Số lượng": 100, "Đơn giá": 150000, "Thành tiền": 15000000},
+            {"Khoản mục": "In ấn Backdrop & Standee", "Số lượng": 1, "Đơn giá": 5000000, "Thành tiền": 5000000},
+            {"Khoản mục": "Thuê âm thanh, ánh sáng chuyên nghiệp", "Số lượng": 1, "Đơn giá": 12000000, "Thành tiền": 12000000},
+            {"Khoản mục": "Hoa tươi bục phát biểu & đại biểu", "Số lượng": 10, "Đơn giá": 500000, "Thành tiền": 5000000}
+        ]
+    },
+    "Hội thảo khoa học": {
+        "kh": [
+            {"Hạng mục": "Mời diễn giả", "Nội dung": "Gửi thư mời các nhà khoa học, chốt chủ đề", "Phụ trách": "Khoa chuyên môn", "Hạn": "Ngày -30"},
+            {"Hạng mục": "Thu thập tham luận", "Nội dung": "Nhận bài, biên tập kỷ yếu hội thảo", "Phụ trách": "Phòng NCKH", "Hạn": "Ngày -15"}
+        ],
+        "kb": [
+            {"Giờ": "08:00 - 08:30", "Nội dung": "Check-in, nhận kỷ yếu và túi tài liệu", "Kỹ thuật": "Nhạc không lời", "Điều phối": "Lễ tân"},
+            {"Giờ": "08:30 - 09:30", "Nội dung": "Báo cáo tham luận chính (Keynote)", "Kỹ thuật": "Trình chiếu Slide", "Điều phối": "Chủ tọa"}
+        ],
+        "dt": [
+            {"Khoản mục": "In kỷ yếu hội thảo", "Số lượng": 200, "Đơn giá": 80000, "Thành tiền": 16000000},
+            {"Khoản mục": "Thù lao báo cáo viên", "Số lượng": 5, "Đơn giá": 2000000, "Thành tiền": 10000000}
+        ]
+    }
+}
 
-# --- 2. HỆ THỐNG TỰ ĐỘNG DÒ TÌM MODEL AI ---
-def get_working_model():
-    try:
-        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        if not models:
-            return None, "Key đúng nhưng chưa được Google cấp phép model nào."
-        
-        # Ưu tiên các dòng thông minh nhất
-        for name in models:
-            if '1.5-flash' in name: return name, "OK"
-        for name in models:
-            if 'gemini-pro' in name: return name, "OK"
-            
-        return models[0], "OK" # Lấy model đầu tiên nếu không có 2 loại trên
-    except Exception as e:
-        return None, str(e)
-
-# --- 3. HÀM LẬP KẾ HOẠCH ---
-def ask_ai(event_name, model_name):
-    model = genai.GenerativeModel(model_name)
-    prompt = f"""
-    Bạn là chuyên gia sự kiện tại Đại học Trà Vinh. Lập hồ sơ cho: "{event_name}".
-    TRẢ VỀ DUY NHẤT JSON:
-    {{
-      "ke_hoach": [{{"Hạng mục": "...", "Nội dung": "...", "Phụ trách": "...", "Hạn": "..."}}],
-      "kich_ban": [{{"Giờ": "...", "Nội dung": "...", "Kỹ thuật": "...", "Điều phối": "..."}}],
-      "du_toan": [{{"Khoản mục": "...", "Số lượng": 0, "Đơn giá": 0, "Thành tiền": 0}}]
-    }}
-    Liệt kê ít nhất 10 dòng công việc logic.
-    """
-    response = model.generate_content(prompt)
-    text = response.text
-    if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
-    elif "```" in text: text = text.split("```")[1].split("```")[0].strip()
-    data = json.loads(text.strip())
-    return pd.DataFrame(data['ke_hoach']), pd.DataFrame(data['kich_ban']), pd.DataFrame(data['du_toan'])
-
-# --- 4. HÀM XUẤT WORD ---
+# --- 2. HÀM XUẤT VĂN BẢN WORD CHUẨN ---
 def export_word(name, df_kh, df_kb, df_dt):
     doc = Document()
     table = doc.add_table(rows=1, cols=2)
@@ -65,7 +65,7 @@ def export_word(name, df_kh, df_kb, df_dt):
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run(f"\nKẾ HOẠCH VÀ KỊCH BẢN\n{name.upper()}").bold = True
 
-    for title, df in [("I. KẾ HOẠCH", df_kh), ("II. KỊCH BẢN", df_kb), ("III. DỰ TOÁN", df_dt)]:
+    for title, df in [("I. KẾ HOẠCH TỔNG THỂ", df_kh), ("II. KỊCH BẢN ĐIỀU HÀNH", df_kb), ("III. DỰ TOÁN KINH PHÍ", df_dt)]:
         doc.add_heading(title, level=1)
         t = doc.add_table(rows=1, cols=len(df.columns))
         t.style = 'Table Grid'
@@ -74,41 +74,47 @@ def export_word(name, df_kh, df_kb, df_dt):
             row_cells = t.add_row().cells
             for i, val in enumerate(row): row_cells[i].text = str(val)
 
+    doc.add_paragraph("\nNơi nhận:\n- BGH (để b/c);\n- Các đơn vị;\n- Lưu VP.")
     buffer = io.BytesIO()
     doc.save(buffer)
     return buffer.getvalue()
 
-# --- 5. GIAO DIỆN CHÍNH ---
-st.title("🏛️ TVU EVENT OS (AutoScan v1.6)")
+# --- 3. GIAO DIỆN CHÍNH ---
+st.title("🏛️ TVU EVENT OS (Template Engine)")
+st.info("Hệ thống vận hành không cần API. Nhanh chóng, bảo mật và ổn định 100%.")
 
-# Chạy chẩn đoán API Key ngay khi mở web
-model_name, status = get_working_model()
+col1, col2 = st.columns([2, 1])
+with col1:
+    ev_name = st.text_input("Nhập tên sự kiện cụ thể:", value="Lễ công bố chuyển đổi Đại học Trà Vinh")
+with col2:
+    loai_su_kien = st.selectbox("Chọn khung kịch bản mẫu:", list(TVU_TEMPLATES.keys()))
 
-if model_name:
-    st.success(f"✅ Hệ thống đã dò được sóng AI: Đang dùng model **{model_name}**")
-    ev_name = st.text_input("Nhập tên sự kiện:", value="Lễ công bố Đại học Trà Vinh")
+if st.button("🚀 NẠP DỮ LIỆU KỊCH BẢN CHUẨN"):
+    # Rút dữ liệu từ kho mẫu nội bộ
+    st.session_state.kh = pd.DataFrame(TVU_TEMPLATES[loai_su_kien]["kh"])
+    st.session_state.kb = pd.DataFrame(TVU_TEMPLATES[loai_su_kien]["kb"])
+    st.session_state.dt = pd.DataFrame(TVU_TEMPLATES[loai_su_kien]["dt"])
+    st.success("Đã tải xong kịch bản chuẩn! Chuyên gia có thể tinh chỉnh số liệu ngay bên dưới.")
+
+if 'kh' in st.session_state:
+    t1, t2, t3, t4 = st.tabs(["📅 KẾ HOẠCH", "🎬 KỊCH BẢN", "💰 DỰ TOÁN", "📄 XUẤT FILE WORD"])
     
-    if st.button("🪄 AI TỰ ĐỘNG Lập Kế Hoạch"):
-        with st.spinner("Đang tính toán..."):
-            try:
-                kh, kb, dt = ask_ai(ev_name, model_name)
-                st.session_state.kh, st.session_state.kb, st.session_state.dt = kh, kb, dt
-                st.success("Tải dữ liệu thành công!")
-            except Exception as e:
-                st.error(f"Lỗi tạo dữ liệu: {e}")
-                
-    if 'kh' in st.session_state:
-        t1, t2, t3, t4 = st.tabs(["📅 KẾ HOẠCH", "🎬 KỊCH BẢN", "💰 DỰ TOÁN", "📄 XUẤT FILE"])
-        with t1: st.data_editor(st.session_state.kh, num_rows="dynamic", use_container_width=True)
-        with t2: st.data_editor(st.session_state.kb, num_rows="dynamic", use_container_width=True)
-        with t3:
-            df_dt = st.data_editor(st.session_state.dt, num_rows="dynamic", use_container_width=True)
-            try: st.metric("TỔNG TIỀN", f"{(pd.to_numeric(df_dt['Số lượng']) * pd.to_numeric(df_dt['Đơn giá'])).sum():,.0f} VNĐ")
-            except: pass
-        with t4:
-            if st.button("📦 XUẤT FILE WORD"):
-                word_file = export_word(ev_name, st.session_state.kh, st.session_state.kb, st.session_state.dt)
-                st.download_button("📥 TẢI FILE WORD", word_file, f"Ke_hoach_{ev_name}.docx")
-else:
-    st.error("🚨 CHẨN ĐOÁN LỖI: API Key của ông bị từ chối truy cập AI.")
-    st.warning("Cách xử lý: Ông phải vào aistudio.google.com tạo lại một Key mới tinh (Nhớ chọn nút 'Create API key in new project' để hệ thống tự bật tính năng AI). Sau đó thay Key mới vào dòng số 11 trong code.")
+    with t1:
+        st.write("Chỉnh sửa đầu việc, phân công người phụ trách:")
+        st.session_state.kh = st.data_editor(st.session_state.kh, num_rows="dynamic", use_container_width=True)
+    with t2:
+        st.write("Điều chỉnh đường dây kịch bản (MC, Âm thanh, Ánh sáng):")
+        st.session_state.kb = st.data_editor(st.session_state.kb, num_rows="dynamic", use_container_width=True)
+    with t3:
+        st.write("Điều chỉnh số lượng và đơn giá thực tế:")
+        df_dt = st.data_editor(st.session_state.dt, num_rows="dynamic", use_container_width=True)
+        try:
+            df_dt['Thành tiền'] = pd.to_numeric(df_dt['Số lượng']) * pd.to_numeric(df_dt['Đơn giá'])
+            st.session_state.dt = df_dt
+            st.metric("TỔNG TIỀN DỰ TOÁN", f"{df_dt['Thành tiền'].sum():,.0f} VNĐ")
+        except: pass
+    with t4:
+        st.write("Hệ thống sẽ tổng hợp 3 bảng trên thành file Word chuẩn thể thức Nghị định 30.")
+        if st.button("📦 XUẤT FILE WORD TỔNG HỢP"):
+            word_file = export_word(ev_name, st.session_state.kh, st.session_state.kb, st.session_state.dt)
+            st.download_button("📥 TẢI FILE WORD CHUẨN", word_file, f"Kich_ban_{ev_name}.docx")
