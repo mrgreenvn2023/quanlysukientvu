@@ -7,48 +7,42 @@ import google.generativeai as genai
 import io
 import json
 
-# --- 1. CẤU HÌNH AI VỚI KEY CỦA ÔNG ---
+# --- 1. CẤU HÌNH AI (ĐÃ FIX LỖI MODEL) ---
 GOOGLE_API_KEY = "AIzaSyCkYx-gXZxLpNssiO1VgOmCJZZ00biUdvc"
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+# Sử dụng 'gemini-1.5-flash-latest' để đảm bảo luôn cập nhật phiên bản mới nhất
+model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
-st.set_page_config(page_title="TVU Event OS - Smart Planner", layout="wide")
+st.set_page_config(page_title="TVU Event OS - v1.2", layout="wide")
 
-# --- 2. HÀM AI XỬ LÝ LOGIC ---
+# --- 2. HÀM AI XỬ LÝ (ÉP KIỂU JSON CHẶT CHẼ) ---
 def ask_ai_for_event_data(event_name):
     prompt = f"""
-    Bạn là một chuyên gia lập kế hoạch sự kiện cấp cao, am hiểu văn hóa Đại học Trà Vinh (TVU).
-    Hãy lập kế hoạch toàn diện cho sự kiện: "{event_name}".
-    
-    Yêu cầu chi tiết:
-    1. Kế hoạch tổng thể: Từ khâu xin chủ trương, thành lập BTC, truyền thông, thiết kế (túi tote, backdrop), thi công sân khấu đến tổng duyệt.
-    2. Kịch bản điều hành: Chi tiết từng mốc thời gian, lời dẫn tóm tắt, yêu cầu kỹ thuật (âm thanh, LED).
-    3. Dự toán: Liệt kê các khoản chi phí thực tế (VND).
-
-    TRẢ VỀ DUY NHẤT ĐỊNH DẠNG JSON (KHÔNG GIẢI THÍCH) THEO MẪU SAU:
+    Bạn là chuyên gia sự kiện TVU. Hãy lập kế hoạch: "{event_name}".
+    TRẢ VỀ DUY NHẤT JSON (KHÔNG GIẢI THÍCH):
     {{
-      "ke_hoach": [
-        {{"Hạng mục": "Chuẩn bị văn bản", "Nội dung": "Soạn tờ trình xin chủ trương BGH", "Phụ trách": "Văn phòng", "Hạn": "Ngày 1"}},
-        {{"Hạng mục": "Thiết kế", "Nội dung": "Thiết kế bộ nhận diện và túi tote TVU", "Phụ trách": "Tổ Truyền thông", "Hạn": "Ngày 5"}}
-      ],
-      "kich_ban": [
-        {{"Giờ": "08:00", "Nội dung": "Chào cờ, tuyên bố lý do", "Kỹ thuật": "Nhạc quốc ca, LED hình cờ", "Điều phối": "MC"}}
-      ],
-      "du_toan": [
-        {{"Khoản mục": "In túi vải Tote có Logo", "Số lượng": 500, "Đơn giá": 35000, "Thành tiền": 17500000}}
-      ]
+      "ke_hoach": [{{"Hạng mục": "...", "Nội dung": "...", "Phụ trách": "...", "Hạn": "..."}}],
+      "kich_ban": [{{"Giờ": "...", "Nội dung": "...", "Kỹ thuật": "...", "Điều phối": "..."}}],
+      "du_toan": [{{"Khoản mục": "...", "Số lượng": 0, "Đơn giá": 0, "Thành tiền": 0}}]
     }}
+    Lưu ý: Đổ ra ít nhất 10-15 dòng cho mỗi phần để đảm bảo tính chi tiết.
     """
     response = model.generate_content(prompt)
-    clean_json = response.text.replace('```json', '').replace('```', '').strip()
-    data = json.loads(clean_json)
+    # Làm sạch chuỗi trả về từ AI
+    raw_text = response.text.strip()
+    if "```json" in raw_text:
+        raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+    elif "```" in raw_text:
+        raw_text = raw_text.split("```")[1].split("```")[0].strip()
+    
+    data = json.loads(raw_text)
     return pd.DataFrame(data['ke_hoach']), pd.DataFrame(data['kich_ban']), pd.DataFrame(data['du_toan'])
 
-# --- 3. HÀM XUẤT FILE WORD CHUẨN ---
+# --- 3. HÀM XUẤT FILE WORD (CHUẨN HÀNH CHÍNH) ---
 def export_to_word(name, df_kh, df_kb, df_dt):
     doc = Document()
-    # Header
     table = doc.add_table(rows=1, cols=2)
+    table.columns[0].width = Pt(200)
     l_cell = table.cell(0, 0).paragraphs[0]
     l_cell.add_run("UBND TỈNH TRÀ VINH\n").bold = True
     l_cell.add_run("ĐẠI HỌC TRÀ VINH\n").bold = True
@@ -59,16 +53,15 @@ def export_to_word(name, df_kh, df_kb, df_dt):
     r_cell.add_run("Độc lập - Tự do - Hạnh phúc\n").bold = True
     r_cell.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    # Title
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = p.add_run(f"\nKẾ HOẠCH TỔNG THỂ VÀ KỊCH BẢN\n{name.upper()}")
     run.bold = True
     run.font.size = Pt(14)
 
-    doc.add_paragraph(f"Hiệu trưởng Đại học Trà Vinh ban hành kế hoạch tổ chức {name} với các nội dung sau:")
+    doc.add_paragraph(f"Hiệu trưởng Đại học Trà Vinh ban hành kế hoạch tổ chức {name}:")
 
-    for title, df in [("I. KẾ HOẠCH CHUẨN BỊ", df_kh), ("II. KỊCH BẢN CHI TIẾT", df_kb), ("III. DỰ TOÁN KINH PHÍ", df_dt)]:
+    for title, df in [("I. KẾ HOẠCH", df_kh), ("II. KỊCH BẢN", df_kb), ("III. DỰ TOÁN", df_dt)]:
         doc.add_heading(title, level=1)
         t = doc.add_table(rows=1, cols=len(df.columns))
         t.style = 'Table Grid'
@@ -79,28 +72,26 @@ def export_to_word(name, df_kh, df_kb, df_dt):
             for i, val in enumerate(row):
                 row_cells[i].text = str(val)
 
-    doc.add_paragraph("\nNơi nhận:\n- BGH (để b/c);\n- Các đơn vị;\n- Lưu VP.")
+    doc.add_paragraph("\nNơi nhận:\n- BGH (để b/c);\n- Lưu VP.")
     buffer = io.BytesIO()
     doc.save(buffer)
     return buffer.getvalue()
 
-# --- 4. GIAO DIỆN CHÍNH ---
-st.title("🏛️ TVU EVENT OPERATING SYSTEM")
-st.markdown("---")
+# --- 4. GIAO DIỆN ---
+st.title("🏛️ TVU EVENT OPERATING SYSTEM (Fixed v1.2)")
 
-ev_name = st.text_input("Tên sự kiện:", placeholder="Ví dụ: Lễ công bố Đại học Trà Vinh")
+ev_name = st.text_input("Tên sự kiện:", value="Lễ công bố Đại học Trà Vinh")
 
-if st.button("🪄 AI TỰ ĐỘNG Lập Kế Hoạch Chi Tiết"):
-    if ev_name:
-        with st.spinner("AI đang thiết kế kịch bản và dự toán..."):
-            try:
-                kh, kb, dt = ask_ai_for_event_data(ev_name)
-                st.session_state.kh = kh
-                st.session_state.kb = kb
-                st.session_state.dt = dt
-                st.success("Đã hoàn tất! Mời ông kiểm tra các Tab bên dưới.")
-            except Exception as e:
-                st.error(f"Lỗi: {e}. Thử bấm lại nhé!")
+if st.button("🪄 AI TỰ ĐỘNG Lập Kế Hoạch"):
+    with st.spinner("AI đang 'nhai' dữ liệu, đợi tí nhe..."):
+        try:
+            kh, kb, dt = ask_ai_for_event_data(ev_name)
+            st.session_state.kh = kh
+            st.session_state.kb = kb
+            st.session_state.dt = dt
+            st.success("Xong rồi ông ơi! Kiểm tra mấy cái thẻ (Tab) ở dưới nhé.")
+        except Exception as e:
+            st.error(f"Vẫn còn lỗi: {e}. Thử bấm lại lần nữa xem sao.")
 
 if 'kh' in st.session_state:
     t1, t2, t3, t4 = st.tabs(["📅 KẾ HOẠCH", "🎬 KỊCH BẢN MC", "💰 DỰ TOÁN", "📄 XUẤT VĂN BẢN"])
@@ -110,9 +101,12 @@ if 'kh' in st.session_state:
     with t2:
         st.session_state.kb = st.data_editor(st.session_state.kb, num_rows="dynamic", use_container_width=True)
     with t3:
-        st.session_state.dt = st.data_editor(st.session_state.dt, num_rows="dynamic", use_container_width=True)
-        st.metric("TỔNG DỰ TOÁN", f"{st.session_state.dt['Thành tiền'].astype(float).sum():,.0f} VNĐ")
+        # Tự động tính Thành tiền nếu ông sửa Số lượng hoặc Đơn giá
+        df_dt = st.data_editor(st.session_state.dt, num_rows="dynamic", use_container_width=True)
+        df_dt['Thành tiền'] = df_dt['Số lượng'].astype(float) * df_dt['Đơn giá'].astype(float)
+        st.session_state.dt = df_dt
+        st.metric("TỔNG TIỀN DỰ KIẾN", f"{df_dt['Thành tiền'].sum():,.0f} VNĐ")
     with t4:
-        if st.button("📦 ĐÓNG GÓI VÀ TẢI FILE WORD"):
+        if st.button("📦 XUẤT FILE WORD"):
             word_file = export_to_word(ev_name, st.session_state.kh, st.session_state.kb, st.session_state.dt)
-            st.download_button("📥 TẢI XUỐNG FILE .DOCX", data=word_file, file_name=f"Ke_hoach_{ev_name}.docx")
+            st.download_button("📥 TẢI FILE WORD CHUẨN", data=word_file, file_name=f"Ke_hoach_{ev_name}.docx")
